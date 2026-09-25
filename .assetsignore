@@ -1,0 +1,9 @@
+# Не віддавати як статику — це вихідники, а не файли сайту.
+.git
+.gitignore
+.assetsignore
+wrangler.jsonc
+worker.js
+lib
+functions
+README.md
