@@ -9,4 +9,4 @@
 import { health, submit } from "../../lib/lead.js";
 
 export const onRequestGet = ({ request, env }) => health(request, env);
-export const onRequestPost = ({ request, env }) => submit(request, env);
+export const onRequestPost = ({ request, env, waitUntil }) => submit(request, env, { waitUntil });

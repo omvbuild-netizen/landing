@@ -9,10 +9,11 @@
 import { handleLead } from "./lib/lead.js";
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
 
-    if (pathname === "/api/lead") return handleLead(request, env);
+    // ctx потрібен, щоб HubSpot і TikTok дописувались уже після відповіді відвідувачу
+    if (pathname === "/api/lead") return handleLead(request, env, ctx);
 
     return env.ASSETS.fetch(request);
   }

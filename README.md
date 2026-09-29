@@ -9,7 +9,7 @@ Cloudflare **Worker зі статикою** (не Pages), збирається �
 index.html        сам сайт — один файл, без збірок і залежностей
 img/              фото у WebP, по 2–3 розміри на кожне
 worker.js         точка входу: маршрут /api/lead, решта → статика
-lib/lead.js       логіка заявки → Telegram
+lib/lead.js       логіка заявки → Telegram, HubSpot, TikTok Events API
 wrangler.jsonc    конфіг Worker'а
 .assetsignore     що НЕ віддавати як статику (.git, вихідники)
 functions/        те саме для Pages — не використовується, лежить про запас
@@ -99,15 +99,55 @@ const CONTACT_TEL   = "+380931567955";
 
 Змініть обидва рядки — номер оновиться і в шапці, і в підвалі, і в нижній панелі на мобільному.
 
-## TikTok Pixel
+## TikTok Pixel і Events API
 
-Вставте код пікселя перед закриттям `</head>`. Подію конверсії код сайту надсилає сам:
+Піксель **«Час Додому сайт»** (`DATMVURC77U98OIJUO3G`, рекламний кабінет «Час додому»)
+уже стоїть у `<head>`. Події сайт надсилає сам:
 
-- `ttq.track("SubmitForm")` — TikTok
-- `fbq("track", "Lead")` — Meta
-- `gtag("event", "generate_lead")` — Google
+| Подія | Коли |
+|---|---|
+| `ViewContent` | людина почала заповнювати форму або відкрила вікно заявки (раз за візит) |
+| `Contact` | натиснула номер телефону |
+| `FindLocation` | натиснула «Прокласти маршрут у Google Maps» |
+| `SubmitForm` | успішна заявка з відповіддю «Так…» |
+| `CompleteRegistration` | «гаряча» заявка: «Так, планую купити протягом 3 місяців» |
 
-Нічого дописувати не треба: щойно пікселі завантажені, події спрацюють після успішної відправки форми.
+Заявка з «Ні, шукаю в іншому місці» конверсією не рахується — ні в пікселі, ні з сервера.
+
+`ttclid` і `utm_*` з посилання реклами сайт запам'ятовує на 7 днів і передає із
+заявкою: у Telegram (рядок «з реклами TikTok: …»), у HubSpot і в TikTok.
+
+Ті самі `SubmitForm` / `CompleteRegistration` сервер дублює в **TikTok Events API**
+з тим самим `event_id` — TikTok склеює їх в одну подію, а сервер добирає ті,
+що заблокував браузер. Для цього потрібна змінна:
+
+| Ім'я | Звідки | Тип |
+|---|---|---|
+| `TIKTOK_EVENTS_TOKEN` | TikTok Events Manager → піксель «Час Додому сайт» → Settings → Events API → Generate Access Token | **Secret** |
+
+Для Meta / Google код теж готовий (`fbq("track", "Lead")`, `gtag("event", "generate_lead")`) —
+спрацює, щойно їхні пікселі з'являться в `<head>`.
+
+## HubSpot
+
+Кожна заявка з сайту створює контакт у HubSpot (або оновлює наявний із тим самим
+телефоном). Заповнюються поля: ім'я, телефон, «Купівля на Лівому березі»,
+«Джерело ліда» = Сайт, «TikTok click ID», «Сторінка заявки», «UTM campaign»,
+«UTM content». Новим контактам ставиться «Статус ліда» = Новий.
+
+Потрібна змінна:
+
+| Ім'я | Звідки | Тип |
+|---|---|---|
+| `HUBSPOT_TOKEN` | HubSpot → Development → Legacy apps → Create legacy app → Private → Scopes: `crm.objects.contacts.read`, `crm.objects.contacts.write` → Create → вкладка Auth → Show token | **Secret** |
+
+Менеджер змінює **«Статус ліда»** (Кваліфікований / Перегляд призначено / Угода /
+Нецільовий), а Zap у Zapier (HubSpot → TikTok Conversions «Send Lead Event»,
+CRM Event Set «Час Додому HubSpot») передає кожну зміну в TikTok.
+
+Після зміни змінних натисніть **Deploy**. Перевірка: `https://chasdodomu.com/api/lead`
+показує `hubspot_set` і `tiktok_events_set` (лише true/false, без значень).
+У логах Worker'а помилки видно як `hubspot_failed` і `tiktok_failed`.
 
 ## Фото та логотип
 
@@ -128,7 +168,7 @@ const CONTACT_TEL   = "+380931567955";
 
 ## Що ще варто зробити
 
-- Задати `BOT_TOKEN` — без нього форма не надсилає заявки
-- Замінити текст у модальному вікні «Політика конфіденційності» на повну версію
-  або поставити посилання на окрему сторінку
-- Вставити пікселі TikTok / Meta перед `</head>`
+- Задати `HUBSPOT_TOKEN` і `TIKTOK_EVENTS_TOKEN` (див. вище)
+- Звірити текст «Політики конфіденційності» з юристом: він згадує піксель TikTok
+  і HubSpot, але це короткий варіант
+- Вставити піксель Meta перед `</head>`, якщо запускатимете рекламу в Meta

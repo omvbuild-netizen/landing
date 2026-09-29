@@ -617,6 +617,17 @@ html{scroll-behavior:smooth;scroll-padding-top:72px}
   .tick circle,.tick path{stroke-dashoffset:0!important}
 }
 </style>
+
+<!-- TikTok Pixel «Час Додому сайт». Події (ViewContent, Contact, FindLocation,
+     SubmitForm, CompleteRegistration) шле скрипт унизу сторінки. Код пікселя
+     публічний — це не секрет. -->
+<script>
+!function (w, d, t) {
+  w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};n=document.createElement("script");n.type="text/javascript",n.async=!0,n.src=r+"?sdkid="+e+"&lib="+t;e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(n,e)};
+  ttq.load("DATMVURC77U98OIJUO3G");
+  ttq.page();
+}(window, document, "ttq");
+</script>
 </head>
 <body>
 <div class="progress" aria-hidden="true"><i></i></div>
@@ -1135,8 +1146,9 @@ html{scroll-behavior:smooth;scroll-padding-top:72px}
   <div class="modal">
     <button class="modal-x" data-close aria-label="Закрити">&times;</button>
     <h2 id="privacy-title">Політика конфіденційності</h2>
-    <p style="margin-bottom:12px">Ми збираємо ваше ім'я та номер телефону лише для того, щоб зв'язатися з вами щодо купівлі будинку, надіслати планування та записати на перегляд.</p>
-    <p style="margin-bottom:12px">Дані не передаються третім особам, окрім партнерів, залучених до оформлення угоди за вашим запитом. Ви можете відкликати згоду й вимагати видалення даних, зателефонувавши за номером +38 093 156 79 55.</p>
+    <p style="margin-bottom:12px">Ми збираємо ваше ім'я, номер телефону та відповідь на питання у формі, щоб зв'язатися з вами щодо купівлі будинку, надіслати планування та записати на перегляд. Заявки зберігаються в нашій CRM-системі HubSpot.</p>
+    <p style="margin-bottom:12px">Сайт використовує піксель TikTok і файли cookie, щоб вимірювати ефективність реклами. Для цього TikTok отримує дані про відвідування сторінки та номер телефону в зашифрованому (хешованому) вигляді, щоб зіставити заявку з рекламою. Інші дані не передаються третім особам, окрім партнерів, залучених до оформлення угоди за вашим запитом.</p>
+    <p style="margin-bottom:12px">Ви можете відкликати згоду й вимагати видалення даних, зателефонувавши за номером +38 093 156 79 55.</p>
     <p>Обробка здійснюється відповідно до Закону України «Про захист персональних даних».</p>
   </div>
 </dialog>
@@ -1146,13 +1158,12 @@ html{scroll-behavior:smooth;scroll-padding-top:72px}
    НАЛАШТУВАННЯ
 
    Заявка йде POST-запитом на FORM_ENDPOINT у форматі JSON:
-   { name, phone, page, referrer, ts }
+   { name, phone, intent, event_id, ttclid, ttp, utm_*, page, referrer, ts }
 
    За замовчуванням це "/api/lead" — серверна функція з цього ж пакета
-   (functions/api/lead.js для Cloudflare Pages, netlify/functions/lead.js
-   для Netlify). Вона тримає токен бота у змінних оточення й надсилає
-   заявку в Telegram. Токен НІКОЛИ не має потрапляти в цей файл:
-   усе, що тут написано, видно кожному відвідувачу.
+   (lib/lead.js). Вона тримає токени у змінних оточення й надсилає
+   заявку в Telegram, HubSpot і TikTok Events API. Токени НІКОЛИ не мають
+   потрапляти в цей файл: усе, що тут написано, видно кожному відвідувачу.
 
    Якщо сервера немає — підставте сюди вебхук Make / Zapier / n8n.
    ===================================================================== */
@@ -1163,6 +1174,76 @@ const CONTACT_TEL    = "+380931567955";
 
 (function () {
   "use strict";
+
+  /* ---------- аналітика: TikTok Pixel + мітки реклами ---------- */
+  /* ttclid і utm_* з посилання реклами тримаємо 7 днів, щоб передати їх разом
+     із заявкою, навіть якщо людина повернулася на сайт не одразу. */
+  var ATTR_KEY = "cd_attr";
+  var ATTR_TTL = 7 * 24 * 3600 * 1000;
+  var ATTR_KEYS = ["ttclid", "utm_source", "utm_medium", "utm_campaign", "utm_content"];
+
+  (function captureAttr() {
+    var q;
+    try { q = new URLSearchParams(location.search); } catch (e) { return; }
+    var fresh = {}, any = false;
+    ATTR_KEYS.forEach(function (k) {
+      var v = q.get(k);
+      if (v) { fresh[k] = v.slice(0, 200); any = true; }
+    });
+    if (!any) return;
+    fresh.t = Date.now();
+    try { localStorage.setItem(ATTR_KEY, JSON.stringify(fresh)); } catch (e) {}
+  })();
+
+  function readAttr() {
+    try {
+      var a = JSON.parse(localStorage.getItem(ATTR_KEY) || "null");
+      if (a && Date.now() - a.t < ATTR_TTL) return a;
+    } catch (e) {}
+    return {};
+  }
+
+  function cookie(name) {
+    var m = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+    return m ? decodeURIComponent(m[1]) : "";
+  }
+
+  function ttTrack(event, params, eventId) {
+    if (!window.ttq) return;
+    try { window.ttq.track(event, params || {}, eventId ? { event_id: eventId } : undefined); } catch (e) {}
+  }
+
+  function newId() {
+    try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+    return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+  }
+
+  function sha256(text) {
+    try {
+      return crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)).then(function (buf) {
+        return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+          return ("0" + b.toString(16)).slice(-2);
+        }).join("");
+      }).catch(function () { return ""; });
+    } catch (e) { return Promise.resolve(""); }
+  }
+
+  /* дзвінок і маршрут — окремі події, щоб бачити інтерес не лише через форму */
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest("a[href]");
+    if (!a) return;
+    var href = a.getAttribute("href") || "";
+    if (href.indexOf("tel:") === 0) ttTrack("Contact", { content_name: "phone_call" });
+    else if (/google\.[a-z.]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps/.test(href)) ttTrack("FindLocation", { content_name: "route" });
+  });
+
+  /* людина почала заповнювати форму (або відкрила її у вікні) — ViewContent, раз за візит */
+  var formSeen = false;
+  document.addEventListener("focusin", function (e) {
+    if (formSeen || !e.target.closest || !e.target.closest("form[data-lead]")) return;
+    formSeen = true;
+    ttTrack("ViewContent", { content_name: "lead_form" });
+  });
 
   /* ---------- модальні вікна ---------- */
   var modal = document.getElementById("modal");
@@ -1410,10 +1491,21 @@ const CONTACT_TEL    = "+380931567955";
       if (!okPhone) { phone.focus(); return; }
       if (!okIntent) { intents[0].focus(); return; }
 
+      /* один і той самий event_id іде в піксель і з сервера в TikTok Events API —
+         TikTok склеїть дві події в одну */
+      var eventId = newId();
+      var attr = readAttr();
       var payload = {
         intent: intent,
         name: name.value.trim(),
         phone: PREFIX + digits,
+        event_id: eventId,
+        ttclid: attr.ttclid || "",
+        ttp: cookie("_ttp"),
+        utm_source: attr.utm_source || "",
+        utm_medium: attr.utm_medium || "",
+        utm_campaign: attr.utm_campaign || "",
+        utm_content: attr.utm_content || "",
         page: location.href,
         referrer: document.referrer || "",
         ts: new Date().toISOString()
@@ -1431,11 +1523,19 @@ const CONTACT_TEL    = "+380931567955";
           confetti(form.querySelector(".confetti"));
           /* «Ні, шукаю в іншому місці» — заявка все одно йде менеджеру,
              але рекламним системам її не рахуємо як конверсію, щоб вони
-             не вчилися на нецільовій аудиторії (так само, як у формі TikTok). */
+             не вчилися на нецільовій аудиторії (так само, як у формі TikTok).
+             SubmitForm — будь-яка цільова заявка («Так…»);
+             CompleteRegistration — «гаряча»: купівля протягом 3 місяців. */
           if (intent !== "elsewhere") {
             if (window.gtag) window.gtag("event", "generate_lead");
-            if (window.ttq) window.ttq.track("SubmitForm");
             if (window.fbq) window.fbq("track", "Lead");
+            sha256(payload.phone).then(function (hash) {
+              if (hash && window.ttq) { try { window.ttq.identify({ phone_number: hash }); } catch (e) {} }
+              ttTrack("SubmitForm", { content_name: "viewing_form", status: intent }, eventId);
+              if (intent === "buy_3m") {
+                ttTrack("CompleteRegistration", { content_name: "hot_lead", status: intent }, eventId + "-hot");
+              }
+            });
           }
         } else {
           btn.disabled = false;
