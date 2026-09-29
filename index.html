@@ -405,6 +405,26 @@ section{padding-block:clamp(40px,6vw,68px)}
 .form-note{margin-top:14px;font-size:13px;color:var(--ink-2);line-height:1.5}
 .form-note a{color:var(--pine-2);font-weight:600}
 .err{color:#a3341f;font-size:13px;margin-top:-8px;margin-bottom:12px;font-weight:600}
+/* питання «Розглядаєте купівлю…» — ті самі відповіді, що й у формі TikTok */
+.choice{border:0;margin:0 0 16px;padding:0;min-width:0}
+.choice legend{padding:0;margin-bottom:10px;font-size:15px;font-weight:700;line-height:1.4;color:var(--ink)}
+.opt{
+  display:flex;align-items:center;gap:12px;min-height:50px;padding:11px 14px;
+  border:1px solid var(--line);border-radius:2px;background:#fff;cursor:pointer;
+  font-size:15px;line-height:1.35;color:var(--ink);transition:border-color .15s,background-color .15s;
+}
+.opt + .opt{margin-top:8px}
+.opt:hover{border-color:var(--pine-2)}
+.opt input{
+  -webkit-appearance:none;appearance:none;flex:0 0 auto;width:20px;height:20px;margin:0;
+  border:1.5px solid var(--ink-3);border-radius:50%;background:#fff;display:grid;place-content:center;cursor:pointer;
+}
+.opt input::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--pine);transform:scale(0);transition:transform .15s}
+.opt input:checked{border-color:var(--pine)}
+.opt input:checked::before{transform:scale(1)}
+.opt input:focus-visible{outline:2px solid var(--pine-2);outline-offset:2px}
+.opt.on{border-color:var(--pine-2);background:var(--pine-wash)}
+.choice + .err{margin-top:-6px}
 .form-done{position:relative;z-index:1;text-align:center;padding:18px 4px 8px;overflow:hidden}
 .form-done h3{
   font-family:"Unbounded",sans-serif;font-size:clamp(19px,4.6vw,23px);
@@ -989,6 +1009,13 @@ html{scroll-behavior:smooth;scroll-padding-top:72px}
       </div>
       <div class="lead-form">
         <form data-lead novalidate>
+          <fieldset class="choice">
+            <legend>Розглядаєте купівлю будинку на Лівому березі Київщини, який знаходиться за 10 хв від Києва?</legend>
+            <label class="opt"><input id="lead-intent-buy" type="radio" name="intent" value="buy_3m" required><span>Так, планую купити протягом 3 місяців</span></label>
+            <label class="opt"><input id="lead-intent-choosing" type="radio" name="intent" value="choosing"><span>Так, але поки обираю</span></label>
+            <label class="opt"><input id="lead-intent-elsewhere" type="radio" name="intent" value="elsewhere"><span>Ні, шукаю в іншому місці</span></label>
+          </fieldset>
+          <div class="err" hidden data-err-intent>Оберіть, будь ласка, один із варіантів.</div>
           <label class="field">
             <span>Ваше ім'я</span>
             <input id="lead-name" name="name" type="text" autocomplete="given-name" placeholder="Олександр" required>
@@ -1057,6 +1084,13 @@ html{scroll-behavior:smooth;scroll-padding-top:72px}
     <h2 id="modal-title">Залиште заявку</h2>
     <p>Менеджер зателефонує протягом 15 хвилин і узгодить зручний час перегляду.</p>
     <form data-lead novalidate>
+      <fieldset class="choice">
+        <legend>Розглядаєте купівлю будинку на Лівому березі Київщини, який знаходиться за 10 хв від Києва?</legend>
+        <label class="opt"><input id="modal-intent-buy" type="radio" name="intent" value="buy_3m" required><span>Так, планую купити протягом 3 місяців</span></label>
+        <label class="opt"><input id="modal-intent-choosing" type="radio" name="intent" value="choosing"><span>Так, але поки обираю</span></label>
+        <label class="opt"><input id="modal-intent-elsewhere" type="radio" name="intent" value="elsewhere"><span>Ні, шукаю в іншому місці</span></label>
+      </fieldset>
+      <div class="err" hidden data-err-intent>Оберіть, будь ласка, один із варіантів.</div>
       <label class="field">
         <span>Ваше ім'я</span>
         <input id="modal-name" name="name" type="text" autocomplete="given-name" placeholder="Олександр" required>
@@ -1139,7 +1173,8 @@ const CONTACT_TEL    = "+380931567955";
     if (!d) return;
     if (typeof d.showModal === "function") { try { d.showModal(); } catch (e) { d.setAttribute("open", ""); } }
     else { d.setAttribute("open", ""); }
-    var f = d.querySelector('input[type="text"]');
+    /* фокус на перше питання форми: радіокнопка не відкриває клавіатуру на телефоні */
+    var f = d.querySelector('input[type="radio"], input[type="text"]');
     if (f) setTimeout(function () { f.focus(); }, 60);
   }
   function closeDlg(d) {
@@ -1234,6 +1269,16 @@ const CONTACT_TEL    = "+380931567955";
       try { input.setSelectionRange(p, p); } catch (e) {}
     }
     input.addEventListener("input", apply);
+    /* вставлений повний номер («+380…», «0…») замінює поле цілком, а не дописується
+       після «+380 » — інакше виходило «+380 +380…» і номер зберігався з помилкою */
+    input.addEventListener("paste", function (e) {
+      var text = (e.clipboardData || window.clipboardData || { getData: function () { return ""; } }).getData("text");
+      if (!text || text.replace(/\D/g, "").length < 9) return;
+      e.preventDefault();
+      input.value = format(digitsOf(text));
+      var p = input.value.length;
+      try { input.setSelectionRange(p, p); } catch (err) {}
+    });
     input.addEventListener("focus", function () {
       if (input.value.replace(/\D/g, "").length <= 3) {
         input.value = PREFIX + " ";
@@ -1326,26 +1371,48 @@ const CONTACT_TEL    = "+380931567955";
     var name = form.querySelector('input[name="name"]');
     var phone = form.querySelector('input[name="phone"]');
     var trap = form.querySelector('input[name="company"]');
+    var intents = form.querySelectorAll('input[name="intent"]');
+    var errIntent = form.querySelector("[data-err-intent]");
     var errName = form.querySelector("[data-err-name]");
     var errPhone = form.querySelector("[data-err-phone]");
     var btn = form.querySelector('button[type="submit"]');
 
     bindPhone(phone);
 
+    /* підсвічуємо обраний варіант і ховаємо помилку, щойно щось вибрали */
+    Array.prototype.forEach.call(intents, function (r) {
+      r.addEventListener("change", function () {
+        Array.prototype.forEach.call(intents, function (x) {
+          x.closest(".opt").classList.toggle("on", x.checked);
+        });
+        if (errIntent) errIntent.hidden = true;
+      });
+    });
+
+    function chosenIntent() {
+      for (var i = 0; i < intents.length; i++) if (intents[i].checked) return intents[i].value;
+      return "";
+    }
+
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       if (trap && trap.value) return;            // спам-пастка
 
+      var intent = chosenIntent();
+      var okIntent = !intents.length || Boolean(intent);
       var okName = name.value.trim().length >= 2;
       var digits = digitsOf(phone.value);
       var okPhone = digits.length === 9;
 
+      if (errIntent) errIntent.hidden = okIntent;
       if (errName) errName.hidden = okName;
       if (errPhone) errPhone.hidden = okPhone;
+      if (!okIntent) { intents[0].focus(); return; }
       if (!okName) { name.focus(); return; }
       if (!okPhone) { phone.focus(); return; }
 
       var payload = {
+        intent: intent,
         name: name.value.trim(),
         phone: PREFIX + digits,
         page: location.href,
@@ -1363,9 +1430,14 @@ const CONTACT_TEL    = "+380931567955";
           if (box) box.classList.add("is-done");
           form.innerHTML = successMarkup();
           confetti(form.querySelector(".confetti"));
-          if (window.gtag) window.gtag("event", "generate_lead");
-          if (window.ttq) window.ttq.track("SubmitForm");
-          if (window.fbq) window.fbq("track", "Lead");
+          /* «Ні, шукаю в іншому місці» — заявка все одно йде менеджеру,
+             але рекламним системам її не рахуємо як конверсію, щоб вони
+             не вчилися на нецільовій аудиторії (так само, як у формі TikTok). */
+          if (intent !== "elsewhere") {
+            if (window.gtag) window.gtag("event", "generate_lead");
+            if (window.ttq) window.ttq.track("SubmitForm");
+            if (window.fbq) window.fbq("track", "Lead");
+          }
         } else {
           btn.disabled = false;
           btn.textContent = original;
