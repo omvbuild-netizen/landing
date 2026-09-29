@@ -1009,13 +1009,6 @@ html{scroll-behavior:smooth;scroll-padding-top:72px}
       </div>
       <div class="lead-form">
         <form data-lead novalidate>
-          <fieldset class="choice">
-            <legend>Розглядаєте купівлю будинку на Лівому березі Київщини, який знаходиться за 10 хв від Києва?</legend>
-            <label class="opt"><input id="lead-intent-buy" type="radio" name="intent" value="buy_3m" required><span>Так, планую купити протягом 3 місяців</span></label>
-            <label class="opt"><input id="lead-intent-choosing" type="radio" name="intent" value="choosing"><span>Так, але поки обираю</span></label>
-            <label class="opt"><input id="lead-intent-elsewhere" type="radio" name="intent" value="elsewhere"><span>Ні, шукаю в іншому місці</span></label>
-          </fieldset>
-          <div class="err" hidden data-err-intent>Оберіть, будь ласка, один із варіантів.</div>
           <label class="field">
             <span>Ваше ім'я</span>
             <input id="lead-name" name="name" type="text" autocomplete="given-name" placeholder="Олександр" required>
@@ -1026,6 +1019,13 @@ html{scroll-behavior:smooth;scroll-padding-top:72px}
             <input id="lead-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" value="+380 " required>
           </label>
           <div class="err" hidden data-err-phone>Введіть 9 цифр номера після +380.</div>
+          <fieldset class="choice">
+            <legend>Розглядаєте купівлю будинку на Лівому березі Київщини, який знаходиться за 10 хв від Києва?</legend>
+            <label class="opt"><input id="lead-intent-buy" type="radio" name="intent" value="buy_3m" required><span>Так, планую купити протягом 3 місяців</span></label>
+            <label class="opt"><input id="lead-intent-choosing" type="radio" name="intent" value="choosing"><span>Так, але поки обираю</span></label>
+            <label class="opt"><input id="lead-intent-elsewhere" type="radio" name="intent" value="elsewhere"><span>Ні, шукаю в іншому місці</span></label>
+          </fieldset>
+          <div class="err" hidden data-err-intent>Оберіть, будь ласка, один із варіантів.</div>
           <div class="hp"><label>Не заповнюйте це поле<input id="lead-hp" type="text" name="company" tabindex="-1" autocomplete="off"></label></div>
           <button class="btn btn-primary btn-block" type="submit">Записатися на перегляд</button>
           <p class="form-note">Натискаючи кнопку, ви погоджуєтесь на обробку персональних даних згідно з <a href="#" data-privacy>політикою конфіденційності</a>.</p>
@@ -1084,13 +1084,6 @@ html{scroll-behavior:smooth;scroll-padding-top:72px}
     <h2 id="modal-title">Залиште заявку</h2>
     <p>Менеджер зателефонує протягом 15 хвилин і узгодить зручний час перегляду.</p>
     <form data-lead novalidate>
-      <fieldset class="choice">
-        <legend>Розглядаєте купівлю будинку на Лівому березі Київщини, який знаходиться за 10 хв від Києва?</legend>
-        <label class="opt"><input id="modal-intent-buy" type="radio" name="intent" value="buy_3m" required><span>Так, планую купити протягом 3 місяців</span></label>
-        <label class="opt"><input id="modal-intent-choosing" type="radio" name="intent" value="choosing"><span>Так, але поки обираю</span></label>
-        <label class="opt"><input id="modal-intent-elsewhere" type="radio" name="intent" value="elsewhere"><span>Ні, шукаю в іншому місці</span></label>
-      </fieldset>
-      <div class="err" hidden data-err-intent>Оберіть, будь ласка, один із варіантів.</div>
       <label class="field">
         <span>Ваше ім'я</span>
         <input id="modal-name" name="name" type="text" autocomplete="given-name" placeholder="Олександр" required>
@@ -1101,6 +1094,13 @@ html{scroll-behavior:smooth;scroll-padding-top:72px}
         <input id="modal-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" value="+380 " required>
       </label>
       <div class="err" hidden data-err-phone>Введіть 9 цифр номера після +380.</div>
+      <fieldset class="choice">
+        <legend>Розглядаєте купівлю будинку на Лівому березі Київщини, який знаходиться за 10 хв від Києва?</legend>
+        <label class="opt"><input id="modal-intent-buy" type="radio" name="intent" value="buy_3m" required><span>Так, планую купити протягом 3 місяців</span></label>
+        <label class="opt"><input id="modal-intent-choosing" type="radio" name="intent" value="choosing"><span>Так, але поки обираю</span></label>
+        <label class="opt"><input id="modal-intent-elsewhere" type="radio" name="intent" value="elsewhere"><span>Ні, шукаю в іншому місці</span></label>
+      </fieldset>
+      <div class="err" hidden data-err-intent>Оберіть, будь ласка, один із варіантів.</div>
       <div class="hp"><label>Не заповнюйте це поле<input id="modal-hp" type="text" name="company" tabindex="-1" autocomplete="off"></label></div>
       <button class="btn btn-primary btn-block" type="submit">Записатися на перегляд</button>
       <p class="form-note">Натискаючи кнопку, ви погоджуєтесь на обробку персональних даних згідно з <a href="#" data-privacy>політикою конфіденційності</a>.</p>
@@ -1173,8 +1173,7 @@ const CONTACT_TEL    = "+380931567955";
     if (!d) return;
     if (typeof d.showModal === "function") { try { d.showModal(); } catch (e) { d.setAttribute("open", ""); } }
     else { d.setAttribute("open", ""); }
-    /* фокус на перше питання форми: радіокнопка не відкриває клавіатуру на телефоні */
-    var f = d.querySelector('input[type="radio"], input[type="text"]');
+    var f = d.querySelector('input[type="text"]');
     if (f) setTimeout(function () { f.focus(); }, 60);
   }
   function closeDlg(d) {
@@ -1404,12 +1403,12 @@ const CONTACT_TEL    = "+380931567955";
       var digits = digitsOf(phone.value);
       var okPhone = digits.length === 9;
 
-      if (errIntent) errIntent.hidden = okIntent;
       if (errName) errName.hidden = okName;
       if (errPhone) errPhone.hidden = okPhone;
-      if (!okIntent) { intents[0].focus(); return; }
+      if (errIntent) errIntent.hidden = okIntent;
       if (!okName) { name.focus(); return; }
       if (!okPhone) { phone.focus(); return; }
+      if (!okIntent) { intents[0].focus(); return; }
 
       var payload = {
         intent: intent,
