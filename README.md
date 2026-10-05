@@ -205,8 +205,10 @@ Events Manager → «Час Додому HubSpot» події один раз р
 | `TIKTOK_CRM_TOKEN` | TikTok Events Manager → CRM Event Set «Час Додому HubSpot» → Settings → Generate Access Token | **Secret** |
 
 Перевірка: `https://chasdodomu.com/api/hubspot?check=1` → `"hubspot":{"ok":true}`,
-`pending` — скільки статусів чекають на відправку, `statuses` — `"ok"`, якщо всі
-варіанти «Статусу ліда» вже є в HubSpot (`"need_scope"` — ключу бракує scopes).
+`pending` — скільки статусів чекають на відправку, `statuses` — `"ok"` або
+`"updated"`, якщо всі варіанти «Статусу ліда» є в HubSpot (перевірка заодно дописує
+відсутні). Якщо HubSpot відмовив — там його помилка; `need_scope: true` означає,
+що ключу бракує scopes.
 У логах Worker'а: `status_sync`, `status_sent`, `status_failed`,
 `status_retry_later`, `status_options_updated`.
 
