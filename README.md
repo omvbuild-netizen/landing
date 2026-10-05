@@ -141,7 +141,7 @@ const CONTACT_TEL   = "+380931567955";
 
 | Ім'я | Звідки | Тип |
 |---|---|---|
-| `HUBSPOT_TOKEN` | HubSpot → Development → Keys → **Service Keys** → ключ «Chas do domu» (scopes `crm.objects.contacts.read`, `crm.objects.contacts.write`) → Show / Copy | **Secret** |
+| `HUBSPOT_TOKEN` | HubSpot → Development → Keys → **Service Keys** → ключ «Chas do domu» (scopes `crm.objects.contacts.read`, `crm.objects.contacts.write`, `crm.schemas.contacts.read`, `crm.schemas.contacts.write`) → Show / Copy | **Secret** |
 
 Після зміни змінних натисніть **Deploy**. Перевірка: `https://chasdodomu.com/api/lead`
 показує `hubspot_set` і `tiktok_events_set` (лише true/false, без значень).
@@ -159,19 +159,37 @@ operate event source`).
 > client secret у нього немає, а legacy-застосунки HubSpot для нових акаунтів уже
 > не створює. Перевірка раз на 5 хвилин дає той самий результат без застосунку.
 
-| Статус у HubSpot | Що отримує TikTok |
-|---|---|
-| Кваліфікований | CRM-подія `qualified` |
-| Перегляд призначено | CRM-подія `viewing_booked`; для заявок із сайту ще й `Schedule` у піксель |
-| Угода | CRM-подія `deal`; для заявок із сайту ще й `Purchase` на $100 000 у піксель |
-| Нецільовий | CRM-подія `unqualified` |
-| Новий | нічого — про саму заявку TikTok уже знає |
+| Статус ліда | Коли ставити | CRM-подія в TikTok |
+|---|---|---|
+| Новий | заявка прийшла, ще не дзвонили | — |
+| Недозвон | дзвонили, не взяв слухавку; передзвонюємо | — |
+| На зв'язку | поговорили, є інтерес, уточнюємо | `contacted` |
+| Думає / купує пізніше | цільовий, але не зараз (6+ міс., продає квартиру, чекає єОселю) | `contacted` |
+| Кваліфікований | Лівий берег підходить, є бюджет або спосіб оплати, готовий приїхати | `qualified` |
+| Перегляд призначено | домовились про дату | `viewing_booked` (+ `Schedule` у піксель для заявок із сайту) |
+| Перегляд відбувся | приїхав, подивився | `viewing_done` |
+| Бронь (завдаток) | вніс завдаток | `reserved` |
+| Угода | підписано договір | `deal` (+ `Purchase` на $100 000 у піксель для заявок із сайту) |
+| Не вийшов на зв'язок | 3 недозвони за 2–3 дні, закриваємо | `lost` |
+| Пропав після розмови | поговорили, далі не відповідає | `lost` |
+| Нецільовий: інший берег / район | шукає не на Лівому березі чи не біля Києва | `unqualified` |
+| Нецільовий: немає бюджету | немає грошей, не проходить по єОселі, не підходить ціна | `unqualified` |
+| Нецільовий: інше | квартира, ділянка, рієлтор, помилкова заявка | `unqualified` |
+| Відмова після перегляду | подивився й відмовився | `lost` |
+
+Список статусів живе в `lib/status.js` (`STATUS_LIST`). Worker сам дописує відсутні
+варіанти в поле «Статус ліда» в HubSpot і оновлює їхні назви; варіанти, додані
+вручну, не чіпає. Для цього сервісному ключу потрібні scopes
+`crm.schemas.contacts.read` і `crm.schemas.contacts.write`.
 
 CRM-події йдуть у CRM Event Set **«Час Додому HubSpot»** (`7690863133832822804`).
 Заявки з Instant Form TikTok зіставляє за «TikTok lead ID», заявки з сайту — за
 «TikTok click ID» і телефоном (у TikTok іде лише SHA-256 хеш номера). У TikTok
-Events Manager → «Час Додому HubSpot» кожен статус один раз прив'язується до етапу
-воронки.
+Events Manager → «Час Додому HubSpot» події один раз розкладаються по етапах воронки:
+етап 2 — `qualified`; етап 3 — `viewing_booked`, `viewing_done`; етап 4 — `reserved`,
+`deal`. `contacted`, `lost` і `unqualified` у воронку не ставляться — це сигнали
+якості, TikTok отримує їх і так. Подія з'являється в Events Manager після першого
+використання статусу.
 
 Поле **«TikTok: передано»** — і звіт, і позначка «вже надіслано»:
 
@@ -186,9 +204,11 @@ Events Manager → «Час Додому HubSpot» кожен статус од�
 |---|---|---|
 | `TIKTOK_CRM_TOKEN` | TikTok Events Manager → CRM Event Set «Час Додому HubSpot» → Settings → Generate Access Token | **Secret** |
 
-Перевірка: `https://chasdodomu.com/api/hubspot?check=1` → `"hubspot":{"ok":true}` і
-`pending` — скільки статусів чекають на відправку. У логах Worker'а:
-`status_sync`, `status_sent`, `status_failed`, `status_retry_later`.
+Перевірка: `https://chasdodomu.com/api/hubspot?check=1` → `"hubspot":{"ok":true}`,
+`pending` — скільки статусів чекають на відправку, `statuses` — `"ok"`, якщо всі
+варіанти «Статусу ліда» вже є в HubSpot (`"need_scope"` — ключу бракує scopes).
+У логах Worker'а: `status_sync`, `status_sent`, `status_failed`,
+`status_retry_later`, `status_options_updated`.
 
 ## Фото та логотип
 
