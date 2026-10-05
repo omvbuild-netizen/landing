@@ -185,11 +185,19 @@ operate event source`).
 CRM-події йдуть у CRM Event Set **«Час Додому HubSpot»** (`7690863133832822804`).
 Заявки з Instant Form TikTok зіставляє за «TikTok lead ID», заявки з сайту — за
 «TikTok click ID» і телефоном (у TikTok іде лише SHA-256 хеш номера). У TikTok
-Events Manager → «Час Додому HubSpot» події один раз розкладаються по етапах воронки:
-етап 2 — `qualified`; етап 3 — `viewing_booked`, `viewing_done`; етап 4 — `reserved`,
-`deal`. `contacted`, `lost` і `unqualified` у воронку не ставляться — це сигнали
-якості, TikTok отримує їх і так. Подія з'являється в Events Manager після першого
-використання статусу.
+Events Manager → «Час Додому HubSpot» → Manage funnel події один раз розкладаються
+по етапах:
+
+| Етап TikTok | Події |
+|---|---|
+| Stage 1: Lead | `contacted` |
+| Stage 2: Qualified lead | `qualified` |
+| Stage 3: Sales opportunity | `viewing_booked`, `viewing_done` |
+| Stage 4: Confirmed purchase | `reserved`, `deal` |
+| Excluded events | `unqualified`, `lost` |
+
+Подія з'являється в Events Manager (у «Uncategorized events») після першого
+використання статусу — тоді її треба перетягнути на свій етап.
 
 Поле **«TikTok: передано»** — і звіт, і позначка «вже надіслано»:
 
