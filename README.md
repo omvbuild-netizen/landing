@@ -150,8 +150,10 @@ const CONTACT_TEL   = "+380931567955";
 ### Статус ліда → TikTok (без Zapier)
 
 Менеджер змінює **«Статус ліда»** в HubSpot. Раз на 5 хвилин сайт перевіряє HubSpot
-(Cron Trigger у `wrangler.jsonc`) і передає нові статуси в TikTok. Налаштовувати
-нічого не треба — вистачає `HUBSPOT_TOKEN` і `TIKTOK_EVENTS_TOKEN`.
+(Cron Trigger у `wrangler.jsonc`) і передає нові статуси в TikTok. Потрібні
+`HUBSPOT_TOKEN`, `TIKTOK_EVENTS_TOKEN` (для пікселя) і `TIKTOK_CRM_TOKEN` (для
+CRM Event Set — токен пікселя TikTok туди не пускає: `40001 No permission to
+operate event source`).
 
 > **Чому не вебхук.** Сервісний ключ HubSpot робить лише API-запити: вебхуків і
 > client secret у нього немає, а legacy-застосунки HubSpot для нових акаунтів уже
@@ -182,7 +184,7 @@ Events Manager → «Час Додому HubSpot» кожен статус од�
 
 | Ім'я | Звідки | Тип |
 |---|---|---|
-| `TIKTOK_CRM_TOKEN` | лише якщо в «TikTok: передано» помилка доступу до CRM Event Set: TikTok Events Manager → «Час Додому HubSpot» → Settings → Generate Access Token. Без нього використовується `TIKTOK_EVENTS_TOKEN` | **Secret** |
+| `TIKTOK_CRM_TOKEN` | TikTok Events Manager → CRM Event Set «Час Додому HubSpot» → Settings → Generate Access Token | **Secret** |
 
 Перевірка: `https://chasdodomu.com/api/hubspot?check=1` → `"hubspot":{"ok":true}` і
 `pending` — скільки статусів чекають на відправку. У логах Worker'а:
