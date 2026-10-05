@@ -8,8 +8,9 @@ Cloudflare **Worker зі статикою** (не Pages), збирається �
 ```
 index.html        сам сайт — один файл, без збірок і залежностей
 img/              фото у WebP, по 2–3 розміри на кожне
-worker.js         точка входу: маршрут /api/lead, решта → статика
+worker.js         точка входу: маршрути /api/lead і /api/hubspot, решта → статика
 lib/lead.js       логіка заявки → Telegram, HubSpot, TikTok Events API
+lib/status.js     вебхук HubSpot: зміна «Статусу ліда» → TikTok
 wrangler.jsonc    конфіг Worker'а
 .assetsignore     що НЕ віддавати як статику (.git, вихідники)
 functions/        те саме для Pages — не використовується, лежить про запас
@@ -133,7 +134,8 @@ const CONTACT_TEL   = "+380931567955";
 Кожна заявка з сайту створює контакт у HubSpot (або оновлює наявний із тим самим
 телефоном). Заповнюються поля: ім'я, телефон, «Купівля на Лівому березі»,
 «Джерело ліда» = Сайт, «TikTok click ID», «Сторінка заявки», «UTM campaign»,
-«UTM content». Новим контактам ставиться «Статус ліда» = Новий.
+«UTM content». Новим контактам ставиться «Статус ліда» = Новий. У поле
+**«TikTok: передано»** сайт пише, чи прийняв TikTok заявку (✓ або текст помилки).
 
 Потрібна змінна:
 
@@ -141,13 +143,49 @@ const CONTACT_TEL   = "+380931567955";
 |---|---|---|
 | `HUBSPOT_TOKEN` | HubSpot → Development → Legacy apps → Create legacy app → Private → Scopes: `crm.objects.contacts.read`, `crm.objects.contacts.write` → Create → вкладка Auth → Show token | **Secret** |
 
-Менеджер змінює **«Статус ліда»** (Кваліфікований / Перегляд призначено / Угода /
-Нецільовий), а Zap у Zapier (HubSpot → TikTok Conversions «Send Lead Event»,
-CRM Event Set «Час Додому HubSpot») передає кожну зміну в TikTok.
-
 Після зміни змінних натисніть **Deploy**. Перевірка: `https://chasdodomu.com/api/lead`
 показує `hubspot_set` і `tiktok_events_set` (лише true/false, без значень).
 У логах Worker'а помилки видно як `hubspot_failed` і `tiktok_failed`.
+
+### Статус ліда → TikTok (без Zapier)
+
+Менеджер змінює **«Статус ліда»** в HubSpot — HubSpot одразу викликає
+`https://chasdodomu.com/api/hubspot`, а сайт передає статус у TikTok:
+
+| Статус у HubSpot | Що отримує TikTok |
+|---|---|
+| Кваліфікований | CRM-подія `qualified` |
+| Перегляд призначено | CRM-подія `viewing_booked`; для заявок із сайту ще й `Schedule` у піксель |
+| Угода | CRM-подія `deal`; для заявок із сайту ще й `Purchase` на $100 000 у піксель |
+| Нецільовий | CRM-подія `unqualified` |
+| Новий | нічого — про саму заявку TikTok уже знає |
+
+CRM-події йдуть у CRM Event Set **«Час Додому HubSpot»** (`7690863133832822804`).
+Заявки з Instant Form TikTok зіставляє за «TikTok lead ID», заявки з сайту — за
+«TikTok click ID» і телефоном (у TikTok іде лише SHA-256 хеш номера). У TikTok
+Events Manager → «Час Додому HubSpot» кожен статус один раз прив'язується до етапу
+воронки. Результат видно в контакті, у полі «TikTok: передано», наприклад
+`Кваліфікований → TikTok ✓ · 05.10 12:10`.
+
+Налаштування (один раз):
+
+1. HubSpot → Development → Legacy apps → застосунок, з якого `HUBSPOT_TOKEN` →
+   вкладка **Auth** → Client secret → Show → скопіювати.
+2. Cloudflare → landing → Settings → Variables and Secrets → `HUBSPOT_APP_SECRET`
+   (Secret) = client secret → **Deploy**.
+3. У тому ж застосунку HubSpot → вкладка **Webhooks** → Target URL
+   `https://chasdodomu.com/api/hubspot` → Create subscription: Contacts →
+   Property changed → «Статус ліда» → Subscribe. Підписка має бути **Active**;
+   збережіть зміни застосунку (Commit changes).
+
+| Ім'я | Звідки | Тип |
+|---|---|---|
+| `HUBSPOT_APP_SECRET` | крок 1 вище. Без нього сайт відхиляє вебхук | **Secret** |
+| `TIKTOK_CRM_TOKEN` | лише якщо в «TikTok: передано» помилка доступу до CRM Event Set: TikTok Events Manager → «Час Додому HubSpot» → Settings → Generate Access Token. Без нього використовується `TIKTOK_EVENTS_TOKEN` | **Secret** |
+
+Перевірка: `https://chasdodomu.com/api/hubspot?check=1` → `"secret_set":true` і
+`"hubspot":{"ok":true,…}`. Сайт приймає лише запити з підписом HubSpot. У логах
+Worker'а: `status_sent`, `status_failed`, `status_bad_signature`.
 
 ## Фото та логотип
 
@@ -168,7 +206,9 @@ CRM Event Set «Час Додому HubSpot») передає кожну змі�
 
 ## Що ще варто зробити
 
-- Задати `HUBSPOT_TOKEN` і `TIKTOK_EVENTS_TOKEN` (див. вище)
+- Задати `HUBSPOT_APP_SECRET` і вебхук у HubSpot (див. «Статус ліда → TikTok»)
+- Прив'язати статуси до етапів воронки в TikTok Events Manager → «Час Додому HubSpot»
+  (з'являться там після першої зміни статусу)
 - Звірити текст «Політики конфіденційності» з юристом: він згадує піксель TikTok
   і HubSpot, але це короткий варіант
 - Вставити піксель Meta перед `</head>`, якщо запускатимете рекламу в Meta

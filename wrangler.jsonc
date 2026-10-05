@@ -1,9 +1,10 @@
 {
   // Cloudflare Worker зі статикою. Статичні файли лежать у корені репозиторію,
-  // динамічний маршрут один — /api/lead (worker.js → lib/lead.js).
+  // динамічні маршрути — /api/lead (lib/lead.js) і /api/hubspot (lib/status.js).
   //
-  // Секрет BOT_TOKEN задається в Cloudflare → Workers & Pages → landing →
-  // Settings → Variables and Secrets (тип Secret). У репозиторій не комітиться.
+  // Секрети (BOT_TOKEN, HUBSPOT_TOKEN, HUBSPOT_APP_SECRET, TIKTOK_EVENTS_TOKEN)
+  // задаються в Cloudflare → Workers & Pages → landing → Settings →
+  // Variables and Secrets (тип Secret). У репозиторій не комітяться.
   "name": "landing",
   "main": "worker.js",
   "compatibility_date": "2026-09-01",
