@@ -2,9 +2,9 @@
   // Cloudflare Worker зі статикою. Статичні файли лежать у корені репозиторію,
   // динамічні маршрути — /api/lead (lib/lead.js) і /api/hubspot (lib/status.js).
   //
-  // Секрети (BOT_TOKEN, HUBSPOT_TOKEN, HUBSPOT_APP_SECRET, TIKTOK_EVENTS_TOKEN)
-  // задаються в Cloudflare → Workers & Pages → landing → Settings →
-  // Variables and Secrets (тип Secret). У репозиторій не комітяться.
+  // Секрети (BOT_TOKEN, HUBSPOT_TOKEN, TIKTOK_EVENTS_TOKEN) задаються в
+  // Cloudflare → Workers & Pages → landing → Settings → Variables and Secrets
+  // (тип Secret). У репозиторій не комітяться.
   "name": "landing",
   "main": "worker.js",
   "compatibility_date": "2026-09-01",
@@ -15,6 +15,10 @@
   // Змінні задаються в дашборді, а не тут. Без цього прапорця wrangler
   // стирав би їх на кожному деплої (секрети він не чіпає в будь-якому разі).
   "keep_vars": true,
+  // Раз на 5 хвилин: нові статуси лідів з HubSpot → TikTok (lib/status.js).
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
   "observability": {
     "enabled": true
   }

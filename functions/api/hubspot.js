@@ -1,12 +1,12 @@
 /**
- * Cloudflare Pages Function для /api/hubspot.
+ * Cloudflare Pages Function для /api/hubspot (діагностика).
  *
  * Зараз проєкт задеплоєний як Worker (див. wrangler.jsonc + worker.js), тож
  * цей файл не використовується. Лишається на випадок переїзду на Pages —
- * логіка спільна, у lib/status.js.
+ * логіка спільна, у lib/status.js. Зверніть увагу: у Pages немає cron, тож
+ * після переїзду синхронізацію статусів треба запускати окремим Worker'ом.
  */
 
-import { hubspotHealth, hubspotWebhook } from "../../lib/status.js";
+import { statusHealth } from "../../lib/status.js";
 
-export const onRequestGet = ({ request, env }) => hubspotHealth(request, env);
-export const onRequestPost = ({ request, env, waitUntil }) => hubspotWebhook(request, env, { waitUntil });
+export const onRequestGet = ({ request, env }) => statusHealth(request, env);
